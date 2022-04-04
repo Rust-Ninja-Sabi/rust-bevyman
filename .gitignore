@@ -1,3 +1,4 @@
 /target
+/.idea
 .ipynb_checkpoints
 Cargo.lock
