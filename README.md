@@ -71,7 +71,7 @@ for (y, row) in gamegrid.value.iter().enumerate() {
 
 ## 3. Step _ move player without collision
 
-<img src="img/step3.mov" width="256" align="left"><br><br><br><br><br><br><br><br>
+<img src="img/step3.gif" width="256" align="left"><br><br><br><br><br><br><br><br>
 
 
 ```Rust
