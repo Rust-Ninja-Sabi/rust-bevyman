@@ -107,7 +107,7 @@ fn main() {
         // system once
         .add_startup_system(setup)
         // system frame
-        //.add_system(ship_move)
+        .add_system(move_player)
         .run();
 }
 
@@ -215,5 +215,26 @@ fn setup(
             }
         }
     }
+}
 
+const PLAYER_SPEED:f32=1.0;
+
+fn move_player(
+    time:Res<Time>,
+    keyboard_input:Res<Input<KeyCode>>,
+    mut query: Query<(&mut Transform, With<Player>)>
+){
+    for (mut transform,_) in query.iter_mut() {
+        let mut direction = Vec3::new(0.,0.,0.);
+        if keyboard_input.pressed(KeyCode::Left) {
+            direction = Vec3::new(-1.0,0.,0.)
+        } else if keyboard_input.pressed(KeyCode::Right) {
+            direction = Vec3::new(1.0,0.,0.)
+        } else if keyboard_input.pressed(KeyCode::Up) {
+            direction = Vec3::new(0.,0.,-1.)
+        } else if keyboard_input.pressed(KeyCode::Down) {
+            direction = Vec3::new(0.,0.,1.)
+        }
+        transform.translation = transform.translation + direction * PLAYER_SPEED * time.delta_seconds();
+    }
 }
