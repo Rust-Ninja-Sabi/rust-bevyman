@@ -51,31 +51,6 @@ impl Gamegrid {
     fn to_map_y(&self, _x:f32, _y:f32, z:f32)->usize {
         z.round() as usize
     }
-
-    fn food_at_pos(&self, position: Vec3) -> bool {
-        use self::Gameobject::*;
-        *self.get_gameobject_at(position.x, position.y, position.z)==FoodObject
-    }
-
-    fn get_gameobject_at(&self, x:f32, y:f32, z:f32)->&Gameobject {
-        let mx = self.to_map_x(x, y, z);
-        let my = self.to_map_y(x, y, z);
-        //println!("{} {} {} {} {}", x, y, z, mx, my);
-        &self.value[my][mx]
-    }
-
-    fn wall_in_distance(&self, position:Vec3, distance:f32)->bool{
-        use self::Gameobject::*;
-        *self.get_gameobject_at(position.x + distance, position.y, position.z)==WallObject
-            || *self.get_gameobject_at(position.x - distance, position.y, position.z)==WallObject
-            || *self.get_gameobject_at(position.x, position.y, position.z + distance)==WallObject
-            || *self.get_gameobject_at(position.x, position.y, position.z - distance)==WallObject
-            || *self.get_gameobject_at(position.x - distance, position.y, position.z - distance)==WallObject
-            || *self.get_gameobject_at(position.x - distance, position.y, position.z + distance)==WallObject
-            || *self.get_gameobject_at(position.x + distance, position.y, position.z - distance)==WallObject
-            || *self.get_gameobject_at(position.x + distance, position.y, position.z + distance)==WallObject
-
-    }
 }
 
 struct Score {
@@ -108,16 +83,6 @@ struct Power;
 #[derive(Component)]
 struct Wall;
 
-#[derive(Component)]
-struct Collidable{
-    old_position:Vec3
-}
-
-#[derive(Component)]
-struct Start{
-    value:Vec3
-}
-
 fn main() {
     App::new()
         //add config resources
@@ -143,7 +108,6 @@ fn main() {
         .add_startup_system(setup)
         // system frame
         .add_system(move_player)
-        .add_system(collision)
         .run();
 }
 
@@ -203,8 +167,6 @@ fn setup(
                         transform: Transform::from_translation(start),
                         ..Default::default()
                     })
-                    .insert(Start{value:start.clone()})
-                    .insert(Collidable{old_position:Vec3::new(0.0,0.0,0.0)})
                     .insert(Player);
                 },
                 Gameobject::FoodObject => {
@@ -274,61 +236,5 @@ fn move_player(
             direction = Vec3::new(0.,0.,1.)
         }
         transform.translation = transform.translation + direction * PLAYER_SPEED * time.delta_seconds();
-    }
-}
-
-fn collision(
-    mut commands: Commands,
-    mut gamegrid: ResMut<Gamegrid>,
-    mut score: ResMut<Score>,
-    mut query: Query<(&mut Transform, &mut Collidable, &Start, With<Player>)>,
-    food_query: Query<(Entity, &Transform, With<Food>, Without<Player>)>,
-    ghost_query: Query<(&Transform, With<Ghost>, Without<Player>, Without<Food>)>
-){
-    for (mut transform, mut collidable,start, _) in query.iter_mut() {
-        // teleport
-        if transform.translation.x > gamegrid.max_x {
-            transform.translation.x = gamegrid.min_x;
-        } else if transform.translation.x < gamegrid.min_x {
-            transform.translation.x = gamegrid.max_x;
-        }
-        if transform.translation.z > gamegrid.max_z {
-            transform.translation.z = gamegrid.min_z;
-        } else if transform.translation.z < gamegrid.min_z {
-            transform.translation.z = gamegrid.max_z;
-        }
-        // wall -> back to old position
-        if gamegrid.wall_in_distance(transform.translation,0.4) {
-            transform.translation = collidable.old_position.clone();
-        } else {
-            collidable.old_position = transform.translation.clone();
-        }
-        // food -> eat
-        if gamegrid.food_at_pos(transform.translation) {
-
-            for (e, food_transform, _,_) in food_query.iter(){
-                if food_transform.translation.distance(transform.translation)<0.2{
-                    commands.entity(e).despawn();
-                    let x = gamegrid.to_map_x(food_transform.translation.x, food_transform.translation.y, food_transform.translation.z);
-                    let y = gamegrid.to_map_y(food_transform.translation.x, food_transform.translation.y, food_transform.translation.z);
-                    gamegrid.value[y][x]=Gameobject::Empty;
-                    score.foodcounter -=1;
-                    if score.foodcounter == 0 {
-                       //finish
-                    }
-                    score.points += 20;
-                }
-            }
-        }
-        //player collides with ghost --> player -1
-        for (v_transform, _,_,_) in ghost_query.iter() {
-            if transform.translation.distance(v_transform.translation) < 1.0 {
-                transform.translation = start.value.clone();
-                score.times -=1;
-                if score.times == 0 {
-                    //finish
-                }
-            }
-        }
     }
 }
