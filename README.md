@@ -41,10 +41,10 @@ impl Default for Gamegrid{
         use self::Gameobject::*;
         Self {
             value:[[WallObject,WallObject,WallObject,WallObject,WallObject,FoodObject,WallObject,WallObject,WallObject,WallObject,WallObject],
-                [WallObject,PowerObject,FoodObject,FoodObject,FoodObject,FoodObject,FoodObject,FoodObject,FoodObject,FoodObject,WallObject],
-                ...
-                    [WallObject,FoodObject,FoodObject,FoodObject,FoodObject,Bevyman,FoodObject,FoodObject,FoodObject,PowerObject,WallObject],
-                [WallObject,WallObject,WallObject,WallObject,WallObject,FoodObject,WallObject,WallObject,WallObject,WallObject,WallObject]]
+                   [WallObject,PowerObject,FoodObject,FoodObject,FoodObject,FoodObject,FoodObject,FoodObject,FoodObject,FoodObject,WallObject],
+                   ...
+                   [WallObject,FoodObject,FoodObject,FoodObject,FoodObject,Bevyman,FoodObject,FoodObject,FoodObject,PowerObject,WallObject],
+                   [WallObject,WallObject,WallObject,WallObject,WallObject,FoodObject,WallObject,WallObject,WallObject,WallObject,WallObject]]
         }
     }
 }
@@ -54,19 +54,19 @@ impl Default for Gamegrid{
 ```Rust
 ....
 for (y, row) in gamegrid.value.iter().enumerate() {
-for (x, col) in row.iter().enumerate() {
-match col {
-Gameobject::Bevyman => {
-commands.spawn_bundle(PbrBundle{
-mesh: meshes.add(Mesh::from(shape::Icosphere { radius: 0.50, subdivisions: 32, })),
-material:materials.add(Color::YELLOW.into()),
-transform: Transform::from_translation(gamegrid.to3d(x,y,0.5)),
-..Default::default()
-})
-.insert(Player);
-},
-Gameobject::FoodObject => {
-commands.spawn_bundle(PbrBundle
+        for (x, col) in row.iter().enumerate() {
+            match col {
+                Gameobject::Bevyman => { 
+                    commands.spawn_bundle(PbrBundle{
+                        mesh: meshes.add(Mesh::from(shape::Icosphere { radius: 0.50, subdivisions: 32, })),
+                        material:materials.add(Color::YELLOW.into()),
+                        transform: Transform::from_translation(gamegrid.to3d(x,y,0.5)),
+                        ..Default::default()
+                    })
+                    .insert(Player);
+                },
+                Gameobject::FoodObject => {
+                    commands.spawn_bundle(PbrBundle
 ```
 
 ## 3. Step _ move player without collision
@@ -92,7 +92,7 @@ fn move_player(
             direction = Vec3::new(0.,0.,1.)
         }
         transform.translation = transform.translation + direction * PLAYER_SPEED * time.delta_seconds();
-    }
+    }  
 }
 ```
 
@@ -118,11 +118,30 @@ fn move_player(
                 let y = gamegrid.to_map_y(food_transform.translation.x, food_transform.translation.y, food_transform.translation.z);
                 gamegrid.value[y][x]=Gameobject::Empty;
             }
+            
         }
         score.foodcounter -=1;
         if score.foodcounter == 0 {
             //win
         }
         score.points += 20;
+    }
+```
+
+## 5. Step _ player teleports
+
+<img src="img/step5.gif" width="256" align="left"><br><br><br><br><br><br><br><br>
+
+
+```Rust
+    if transform.translation.x > gamegrid.max_x {
+        transform.translation.x = gamegrid.min_x;
+    } else if transform.translation.x < gamegrid.min_x {
+        transform.translation.x = gamegrid.max_x;
+    }
+    if transform.translation.z > gamegrid.max_z {
+        transform.translation.z = gamegrid.min_z;
+    } else if transform.translation.z < gamegrid.min_z {
+        transform.translation.z = gamegrid.max_z;
     }
 ```
