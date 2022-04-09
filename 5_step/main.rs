@@ -94,9 +94,6 @@ impl Default for Score{
 }
 
 #[derive(Component)]
-struct Scoretext;
-
-#[derive(Component)]
 struct Ghost;
 
 #[derive(Component)]
@@ -147,13 +144,11 @@ fn main() {
         // system frame
         .add_system(move_player)
         .add_system(collision)
-        .add_system(scoreboard)
         .run();
 }
 
 fn setup(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     gamegrid: Res<Gamegrid>,
     mut ambient_light: ResMut<AmbientLight>,
     mut score: ResMut<Score>,
@@ -167,8 +162,6 @@ fn setup(
         transform: Transform::from_xyz(5.0,10.0,12.0).looking_at(Vec3::new(5.,0.,5.), Vec3::Y),
         ..Default::default()
     });
-
-    commands.spawn_bundle(UiCameraBundle::default());
 
     // light
     commands.spawn_bundle(PointLightBundle{
@@ -188,30 +181,6 @@ fn setup(
         transform: Transform::from_xyz(5., 0., 5.),
         ..Default::default()
     });
-
-    // scoreboard
-    commands.spawn_bundle(TextBundle {
-        text: Text::with_section(
-            "Score:",
-            TextStyle {
-                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                font_size: 40.0,
-                color: Color::rgb(0.5, 0.5, 1.0),
-            },
-            Default::default(),
-        ),
-        style: Style {
-            position_type: PositionType::Absolute,
-            position: Rect {
-                top: Val::Px(5.0),
-                left: Val::Px(5.0),
-                ..Default::default()
-            },
-            ..Default::default()
-        },
-        ..Default::default()
-    }).
-        insert(Scoretext);
 
     // gamegrid
     for (y, row) in gamegrid.value.iter().enumerate() {
@@ -362,12 +331,4 @@ fn collision(
             }
         }
     }
-}
-
-fn scoreboard(
-    score: Res<Score>,
-    mut query: Query<&mut Text>
-) {
-    let mut text = query.single_mut();
-    text.sections[0].value = format!("Score: {}", score.points);
 }

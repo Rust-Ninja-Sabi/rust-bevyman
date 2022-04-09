@@ -145,3 +145,44 @@ fn move_player(
         transform.translation.z = gamegrid.max_z;
     }
 ```
+
+## 6. Step _ show score
+
+<img src="img/step6.png" width="256" align="left"><br><br><br><br><br><br><br><br>
+
+
+```Rust
+commands.spawn_bundle(TextBundle {
+        text: Text::with_section(
+            "Score:",
+            TextStyle {
+                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                font_size: 40.0,
+                color: Color::rgb(0.5, 0.5, 1.0),
+            },
+            Default::default(),
+        ),
+        style: Style {
+            position_type: PositionType::Absolute,
+            position: Rect {
+                top: Val::Px(5.0),
+                left: Val::Px(5.0),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+```
+
+
+```Rust
+fn scoreboard(
+    score: Res<Score>,
+    mut query: Query<&mut Text>
+) {
+    let mut text = query.single_mut();
+    text.sections[0].value = format!("Score: {}", score.points);
+}
+```
