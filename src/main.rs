@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use rand::Rng;
 
 #[derive(PartialEq)]
 enum Gameobject {
@@ -94,7 +95,22 @@ impl Default for Score{
 }
 
 #[derive(Component)]
+struct Direction{
+    value:Vec3
+}
+impl Default for Direction{
+    fn default() -> Self {
+        Self {
+            value: Vec3::new(0.,0.,0.)
+        }
+    }
+}
+
+#[derive(Component)]
 struct Scoretext;
+
+#[derive(Component)]
+struct Playertext;
 
 #[derive(Component)]
 struct Ghost;
@@ -146,7 +162,9 @@ fn main() {
         .add_startup_system(setup)
         // system frame
         .add_system(move_player)
+        .add_system(move_ghost)
         .add_system(collision)
+        .add_system(collision_ghost)
         .add_system(scoreboard)
         .run();
 }
@@ -212,6 +230,28 @@ fn setup(
         ..Default::default()
     }).
         insert(Scoretext);
+    commands.spawn_bundle(TextBundle {
+        text: Text::with_section(
+            "Player:",
+            TextStyle {
+                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                font_size: 40.0,
+                color: Color::rgb(0.5, 0.5, 1.0),
+            },
+            Default::default(),
+        ),
+        style: Style {
+            position_type: PositionType::Absolute,
+            position: Rect {
+                top: Val::Px(5.0),
+                right: Val::Px(25.0),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        ..Default::default()
+    })
+        .insert(Playertext);
 
     // gamegrid
     for (y, row) in gamegrid.value.iter().enumerate() {
@@ -278,6 +318,8 @@ fn setup(
                         transform: Transform::from_translation(gamegrid.to3d(x,y,0.5)),
                         ..Default::default()
                     })
+                    .insert(Direction{..Default::default()})
+                    .insert(Collidable{old_position:Vec3::new(0.0,0.0,0.0)})
                     .insert(Ghost);
                 }
                 _ => {}
@@ -366,8 +408,87 @@ fn collision(
 
 fn scoreboard(
     score: Res<Score>,
-    mut query: Query<&mut Text>
+    mut score_query: Query<(&mut Text, With<Scoretext>, Without<Playertext>)>,
+    mut player_query: Query<&mut Text, With<Playertext>>,
 ) {
-    let mut text = query.single_mut();
+    let (mut text,_,_) = score_query.single_mut();
     text.sections[0].value = format!("Score: {}", score.points);
+
+    let mut player_text = player_query.single_mut();
+    player_text.sections[0].value = format!("Player: {}", score.times);
+}
+
+const GHOST_SPEED:f32=1.0;
+
+fn move_ghost(
+    time:Res<Time>,
+    mut query: Query<(&mut Transform, &mut Collidable, &mut Direction, With<Ghost>)>
+){
+    for (mut transform, mut collidable, mut direction, _) in query.iter_mut() {
+        if direction.value.x == 0.0 && direction.value.y == 0.0 && direction.value.z == 0.0 {
+            let mut rng = rand::thread_rng();
+            match rng.gen_range(0..4) {
+                0 => {
+                    direction.value = Vec3::new(-1.0, 0.0, 0.0)
+                    //ghosts[i].mesh.rotation.y = -90 * Math.PI / 180;
+                }
+                1 => {
+                    direction.value = Vec3::new(1.0, 0.0, 0.0);
+                    //ghosts[i].mesh.rotation.y = 90 * Math.PI / 180;
+                }
+                2 => {
+                    direction.value = Vec3::new(0.0, 0.0, -1.0);
+                    //ghosts[i].mesh.rotation.y = 180 * Math.PI / 180;
+                }
+                3 => {
+                    direction.value = Vec3::new(0.0, 0.0, 1.0);
+                    //ghosts[i].mesh.rotation.y = 0 * Math.PI / 180;
+                }
+                _ => {}
+            }
+        }
+
+        collidable.old_position = transform.translation.clone();
+
+        transform.translation = transform.translation + direction.value * GHOST_SPEED * time.delta_seconds();
+    }
+}
+
+fn collision_ghost(
+    gamegrid: ResMut<Gamegrid>,
+    mut query: Query<(&mut Transform, &mut Collidable, &mut Direction, With<Ghost>)>,
+){
+    let mut v: Vec<Vec3> = Vec::new();
+    for (transform, _collidable, _direction, _,) in query.iter() {
+        v.push(transform.translation.clone());
+    }
+    for (mut transform, mut collidable, mut direction, _,) in query.iter_mut() {
+        // teleport
+        if transform.translation.x > gamegrid.max_x {
+            transform.translation.x = gamegrid.min_x;
+        } else if transform.translation.x < gamegrid.min_x {
+            transform.translation.x = gamegrid.max_x;
+        }
+        if transform.translation.z > gamegrid.max_z {
+            transform.translation.z = gamegrid.min_z;
+        } else if transform.translation.z < gamegrid.min_z {
+            transform.translation.z = gamegrid.max_z;
+        }
+        // ghost collides with wall
+        if gamegrid.wall_in_distance(transform.translation,0.4) {
+            transform.translation = collidable.old_position.clone();
+            direction.value = Vec3::new(0.0,0.0,0.0);
+        } else {
+            collidable.old_position = transform.translation.clone();
+        }
+        //ghost collides with ghost --> turn
+        for v_translation in v.iter() {
+            let distance = transform.translation.distance(*v_translation);
+            if distance > 0.0 && distance < 1.0 {
+                direction.value = Vec3::new(-1.0 * direction.value.x, -1.0 * direction.value.y, -1.0 * direction.value.z);
+                transform.translation = collidable.old_position.clone();
+                direction.value = Vec3::new(0.0,0.0,0.0);
+            }
+        }
+    }
 }

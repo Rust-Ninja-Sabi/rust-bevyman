@@ -179,10 +179,46 @@ commands.spawn_bundle(TextBundle {
 
 ```Rust
 fn scoreboard(
-    score: Res<Score>,
+    score: Res<Score>, 
     mut query: Query<&mut Text>
 ) {
     let mut text = query.single_mut();
     text.sections[0].value = format!("Score: {}", score.points);
 }
+```
+
+## 7. Step _ move random ghosts
+
+<img src="img/step7.gif" width="256" align="left"><br><br><br><br><br><br><br><br>
+
+
+```Rust
+for (mut transform, mut collidable, mut direction, _) in query.iter_mut() {
+        if direction.value.x == 0.0 && direction.value.y == 0.0 && direction.value.z == 0.0 { 
+            let mut rng = rand::thread_rng();
+            match rng.gen_range(0..4) {
+                0 => {
+                    direction.value = Vec3::new(-1.0, 0.0, 0.0)
+                    //ghosts[i].mesh.rotation.y = -90 * Math.PI / 180;
+                }
+                1 => {
+                    direction.value = Vec3::new(1.0, 0.0, 0.0);
+                    //ghosts[i].mesh.rotation.y = 90 * Math.PI / 180;
+                }
+                2 => {
+                    direction.value = Vec3::new(0.0, 0.0, -1.0);
+                    //ghosts[i].mesh.rotation.y = 180 * Math.PI / 180;
+                }
+                3 => {
+                    direction.value = Vec3::new(0.0, 0.0, 1.0);
+                    //ghosts[i].mesh.rotation.y = 0 * Math.PI / 180;
+                }
+                _ => {}
+            }
+        }
+
+        collidable.old_position = transform.translation.clone();
+
+        transform.translation = transform.translation + direction.value * GHOST_SPEED * time.delta_seconds();
+    }
 ```
