@@ -137,12 +137,6 @@ struct Start{
     value:Vec3
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash)]
-enum Gamestate {
-    Play,
-    Finish,
-}
-
 fn main() {
     App::new()
         //add config resources
@@ -158,20 +152,20 @@ fn main() {
         .insert_resource(Score::default())
         //bevy itself
         .add_plugins(DefaultPlugins)
-        .add_state(Gamestate::Play)
+        //resources
+        //.insert_resource(Score{value:0})
+        // if it implements `Default` or `FromWorld`
+        //.init_resource::<MyFancyResource>()
+        // events:
+        //.add_event::<LevelUpEvent>()
         // system once
         .add_startup_system(setup)
         // system frame
-        .add_system_set(
-            SystemSet::on_update(Gamestate::Play)
-                .with_system(move_player)
-                .with_system(move_ghost)
-                .with_system(collision)
-                .with_system(collision_ghost)
-                .with_system(scoreboard),
-        )
-        .add_system_set(SystemSet::on_exit(Gamestate::Play).with_system(teardown))
-        .add_system_set(SystemSet::on_enter(Gamestate::Finish).with_system(display_finish))
+        .add_system(move_player)
+        .add_system(move_ghost)
+        .add_system(collision)
+        .add_system(collision_ghost)
+        .add_system(scoreboard)
         .run();
 }
 
@@ -359,7 +353,6 @@ fn move_player(
 fn collision(
     mut commands: Commands,
     mut gamegrid: ResMut<Gamegrid>,
-    mut state: ResMut<State<Gamestate>>,
     mut score: ResMut<Score>,
     mut query: Query<(&mut Transform, &mut Collidable, &Start, With<Player>)>,
     food_query: Query<(Entity, &Transform, With<Food>, Without<Player>)>,
@@ -394,8 +387,7 @@ fn collision(
                     gamegrid.value[y][x]=Gameobject::Empty;
                     score.foodcounter -=1;
                     if score.foodcounter == 0 {
-                        let _ = state.overwrite_set(Gamestate::Finish);
-                        return;
+                       //finish
                     }
                     score.points += 20;
                 }
@@ -407,8 +399,7 @@ fn collision(
                 transform.translation = start.value.clone();
                 score.times -=1;
                 if score.times == 0 {
-                    let _ = state.overwrite_set(Gamestate::Finish);
-                    return;
+                    //finish
                 }
             }
         }
@@ -499,45 +490,5 @@ fn collision_ghost(
                 direction.value = Vec3::new(0.0,0.0,0.0);
             }
         }
-    }
-}
-
-fn display_finish(
-    mut commands: Commands,
-    score: Res<Score>,
-    asset_server: Res<AssetServer>
-) {
-    let finish_text =
-        if score.times==0 {"game finish"} else {"you win"};
-    commands
-        .spawn_bundle(NodeBundle {
-            style: Style {
-                margin: Rect::all(Val::Auto),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                ..Default::default()
-            },
-            color: Color::NONE.into(),
-            ..Default::default()
-        })
-        .with_children(|parent| {
-            parent.spawn_bundle(TextBundle {
-                text: Text::with_section(
-                    format!("finish: {}", finish_text),
-                    TextStyle {
-                        font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                        font_size: 80.0,
-                        color: Color::rgb(0.5, 0.5, 1.0),
-                    },
-                    Default::default(),
-                ),
-                ..Default::default()
-            });
-        });
-}
-
-fn teardown(mut commands: Commands, entities: Query<Entity, Without<Camera>>) {
-    for entity in entities.iter() {
-        commands.entity(entity).despawn_recursive();
     }
 }

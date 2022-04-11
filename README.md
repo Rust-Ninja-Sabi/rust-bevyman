@@ -222,3 +222,38 @@ for (mut transform, mut collidable, mut direction, _) in query.iter_mut() {
         transform.translation = transform.translation + direction.value * GHOST_SPEED * time.delta_seconds();
     }
 ```
+
+## 8. Step _ game finish
+
+<img src="img/step8.png" width="256" align="left"><br><br><br><br><br><br><br><br>
+
+
+```Rust
+App::new()
+    //add config resources
+    .insert_resource(Msaa {samples: 4})
+    .insert_resource(WindowDescriptor{
+        title: "bevyman".to_string(),
+        width: 640.0,
+        height: 400.0,
+        vsync: true,
+        ..Default::default()
+    })
+    .insert_resource(Gamegrid::default())
+    .insert_resource(Score::default())
+    //bevy itself
+    .add_plugins(DefaultPlugins)
+    .add_state(Gamestate::Play)
+    .add_startup_system(setup)
+    .add_system_set(
+        SystemSet::on_update(Gamestate::Play)
+            .with_system(move_player)
+            .with_system(move_ghost)
+            .with_system(collision)
+            .with_system(collision_ghost)
+            .with_system(scoreboard),
+    )
+    .add_system_set(SystemSet::on_exit(Gamestate::Play).with_system(teardown))
+    .add_system_set(SystemSet::on_enter(Gamestate::Finish).with_system(display_finish))
+    .run();
+```
