@@ -151,7 +151,6 @@ fn main() {
             title: "bevyman".to_string(),
             width: 640.0,
             height: 400.0,
-            vsync: true,
             ..Default::default()
         })
         .insert_resource(Gamegrid::default())
