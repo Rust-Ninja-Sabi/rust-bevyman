@@ -11,6 +11,7 @@ enum Gameobject {
     Empty
 }
 
+#[derive(Resource)]
 struct Gamegrid {
     value: [[Gameobject;11];10], //col row
     min_x: f32,
@@ -79,6 +80,7 @@ impl Gamegrid {
     }
 }
 
+#[derive(Resource)]
 struct Score {
     foodcounter:i32,
     points:i32,
@@ -147,16 +149,18 @@ fn main() {
     App::new()
         //add config resources
         .insert_resource(Msaa {samples: 4})
-        .insert_resource(WindowDescriptor{
-            title: "bevyman".to_string(),
-            width: 640.0,
-            height: 400.0,
-            ..Default::default()
-        })
         .insert_resource(Gamegrid::default())
         .insert_resource(Score::default())
         //bevy itself
-        .add_plugins(DefaultPlugins)
+       .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor {
+                title: "bevyman".to_string(),
+                width: 640.0,
+                height: 400.0,
+                ..default()
+            },
+            ..default()
+        }))
         .add_state(Gamestate::Play)
         // system once
         .add_startup_system(setup)
@@ -186,15 +190,17 @@ fn setup(
     ambient_light.color = Color::WHITE;
 
     //camera
-    commands.spawn_bundle(PerspectiveCameraBundle{
+    commands.spawn(Camera3dBundle{
         transform: Transform::from_xyz(5.0,10.0,12.0).looking_at(Vec3::new(5.,0.,5.), Vec3::Y),
         ..Default::default()
-    });
-
-    commands.spawn_bundle(UiCameraBundle::default());
+    })
+        .insert(UiCameraConfig {
+            show_ui: true,
+            ..default()
+        });
 
     // light
-    commands.spawn_bundle(PointLightBundle{
+    commands.spawn(PointLightBundle{
         point_light: PointLight{
             intensity: 1500.0,
             shadows_enabled: true,
@@ -205,7 +211,7 @@ fn setup(
     });
 
     // plane
-    commands.spawn_bundle(PbrBundle{
+    commands.spawn(PbrBundle{
         mesh: meshes.add(Mesh::from(shape::Plane{size: 11.0})),
         material:materials.add(Color::rgb(0.8,0.8,0.8).into()),
         transform: Transform::from_xyz(5., 0., 5.),
@@ -213,19 +219,18 @@ fn setup(
     });
 
     // scoreboard
-    commands.spawn_bundle(TextBundle {
-        text: Text::with_section(
+    commands.spawn(TextBundle {
+        text: Text::from_section(
             "Score:",
             TextStyle {
                 font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                 font_size: 40.0,
                 color: Color::rgb(0.5, 0.5, 1.0),
-            },
-            Default::default(),
+            }
         ),
         style: Style {
             position_type: PositionType::Absolute,
-            position: Rect {
+            position: UiRect {
                 top: Val::Px(5.0),
                 left: Val::Px(5.0),
                 ..Default::default()
@@ -235,19 +240,18 @@ fn setup(
         ..Default::default()
     }).
         insert(Scoretext);
-    commands.spawn_bundle(TextBundle {
-        text: Text::with_section(
+    commands.spawn(TextBundle {
+        text: Text::from_section(
             "Player:",
             TextStyle {
                 font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                 font_size: 40.0,
                 color: Color::rgb(0.5, 0.5, 1.0),
-            },
-            Default::default(),
+            }
         ),
         style: Style {
             position_type: PositionType::Absolute,
-            position: Rect {
+            position: UiRect {
                 top: Val::Px(5.0),
                 right: Val::Px(25.0),
                 ..Default::default()
@@ -273,7 +277,7 @@ fn setup(
                     //    })
                     //    .insert(Player);
                     let start = gamegrid.to3d(x,y,0.5);
-                    commands.spawn_bundle(PbrBundle{
+                    commands.spawn(PbrBundle{
                         mesh: meshes.add(Mesh::from(shape::Icosphere { radius: 0.50, subdivisions: 32, })),
                         material:materials.add(Color::YELLOW.into()),
                         transform: Transform::from_translation(start),
@@ -284,7 +288,7 @@ fn setup(
                     .insert(Player);
                 },
                 Gameobject::FoodObject => {
-                    commands.spawn_bundle(PbrBundle{
+                    commands.spawn(PbrBundle{
                         mesh: meshes.add(Mesh::from(shape::Cube { size: 0.25})),
                         material:materials.add(Color::GREEN.into()),
                         transform: Transform::from_translation(gamegrid.to3d(x,y,0.5)),
@@ -294,7 +298,7 @@ fn setup(
                     score.foodcounter +=1;
                 }
                 Gameobject::PowerObject => {
-                    commands.spawn_bundle(PbrBundle{
+                    commands.spawn(PbrBundle{
                         mesh: meshes.add(Mesh::from(shape::Cube { size: 0.25})),
                         material:materials.add(Color::PINK.into()),
                         transform: Transform::from_translation(gamegrid.to3d(x,y,0.5)),
@@ -304,7 +308,7 @@ fn setup(
                     score.foodcounter +=1;
                 }
                 Gameobject::WallObject => {
-                    commands.spawn_bundle(PbrBundle{
+                    commands.spawn(PbrBundle{
                         mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0})),
                         material:materials.add(Color::GRAY.into()),
                         transform: Transform::from_translation(gamegrid.to3d(x,y,0.5)),
@@ -313,7 +317,7 @@ fn setup(
                         .insert(Wall);
                 }
                 Gameobject::GhostObject => {
-                    commands.spawn_bundle(PbrBundle{
+                    commands.spawn(PbrBundle{
                         mesh: meshes.add(Mesh::from(shape::Capsule {
                             radius: 0.5,
                             depth: 1.0,
@@ -508,27 +512,27 @@ fn display_finish(
 ) {
     let finish_text =
         if score.times==0 {"game finish"} else {"you win"};
+
     commands
-        .spawn_bundle(NodeBundle {
+        .spawn(NodeBundle {
             style: Style {
-                margin: Rect::all(Val::Auto),
+                margin: UiRect::all(Val::Auto),
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 ..Default::default()
             },
-            color: Color::NONE.into(),
+            background_color: Color::NONE.into(),
             ..Default::default()
         })
         .with_children(|parent| {
-            parent.spawn_bundle(TextBundle {
-                text: Text::with_section(
+            parent.spawn(TextBundle {
+                text: Text::from_section(
                     format!("finish: {}", finish_text),
                     TextStyle {
                         font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                         font_size: 80.0,
                         color: Color::rgb(0.5, 0.5, 1.0),
-                    },
-                    Default::default(),
+                    }
                 ),
                 ..Default::default()
             });
